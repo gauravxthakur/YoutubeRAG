@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
-#from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 #from langchain_core.runnables import RunnablePassthrough
 #from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -26,6 +26,20 @@ model = ChatOpenAI(model="deepseek/deepseek-chat-v3.1:free", openai_api_key=OPEN
 # Define the parser
 parser = StrOutputParser()
 
-chain = model | parser
+template = """
+Answer the question based on the context below. If you can't 
+answer the question, reply "I don't know".
 
-print(chain.invoke("who is Julius Caesar?"))
+Context: {context}
+
+Question: {question}
+"""
+
+prompt = ChatPromptTemplate.from_template(template)
+
+chain  = prompt | model | parser
+
+print(chain.invoke({
+    "context": "Julius Caesar is my Maths teacher",
+    "question": "Who is Julius Caesar?"
+}))
