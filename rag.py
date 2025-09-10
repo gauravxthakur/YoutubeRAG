@@ -5,7 +5,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 #from langchain_core.runnables import RunnablePassthrough
-#from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 #from langchain_openai import OpenAIEmbeddings
 #from langchain_pinecone import PineconeVectorStore
 
@@ -37,6 +38,7 @@ Question: {question}
 prompt = ChatPromptTemplate.from_template(template)
 
 
+# Getting the transcript of the video
 def get_video_transcription(video_url, cache_file="transcription.txt"):
     # check if a transcript file already exists
     if os.path.exists(cache_file):
@@ -94,10 +96,16 @@ def get_video_transcription(video_url, cache_file="transcription.txt"):
 transcription = get_video_transcription(YOUTUBE_VIDEO)
 
 
+# Split the transcription into chunks
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=2)
+documents = text_splitter.split_documents([Document(page_content=transcription)])
+
+
 chain = prompt | model | parser
 
 
-print(chain.invoke({
-    "context": "Julius Caesar is my Maths teacher",
-    "question": "Who is Julius Caesar?"
-}))
+#print(chain.invoke({
+    #"context": "Julius Caesar is my Maths teacher",
+    #"question": "Who is Julius Caesar?"
+#}))
+print(documents)
