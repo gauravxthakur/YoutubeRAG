@@ -9,9 +9,8 @@ from langchain_core.output_parsers import StrOutputParser
 #from langchain_openai import OpenAIEmbeddings
 #from langchain_pinecone import PineconeVectorStore
 
-#from pytube import YouTube
-#import openai
-#import whisper
+import yt_dlp
+import whisper
 #import pinecone
 
 # Load environment variables
@@ -37,7 +36,66 @@ Question: {question}
 
 prompt = ChatPromptTemplate.from_template(template)
 
-chain  = prompt | model | parser
+
+def get_video_transcription(video_url, cache_file="transcription.txt"):
+    # check if a transcript file already exists
+    if os.path.exists(cache_file):
+        with open(cache_file,"r") as file:
+            print("Using cached transcription...")
+            return file.read()
+        
+    try:
+        # Define the directory on the D drive and create it if it doesn't exist
+        download_dir = "D:\\YT_DL_Downloads"
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+            
+        # Define the yt-dlp options to download only audio
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'outtmpl': os.path.join(download_dir, '%(id)s.%(ext)s'),
+            'keepvideo': False,
+            'restrictfilenames': True,
+        }
+
+        # Use yt_dlp to download the audio
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            print("Downloading audio to D drive...")
+            info = ydl.extract_info(video_url, download=True)
+            
+            # Update the path to point to the .mp3 file
+            audio_path = os.path.join(download_dir, f"{info['id']}.mp3")
+
+
+        # Load the whisper model and transcribe the audio
+        model = whisper.load_model("base")
+        transcription = model.transcribe(audio_path, fp16=False)
+
+        # Save the transcription to a cache file
+        with open(cache_file, "w") as file:
+            file.write(transcription["text"])
+        
+        # Manually delete the temporary audio file
+        os.remove(audio_path)
+        
+        return transcription["text"]
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
+# Get the transcription
+transcription = get_video_transcription(YOUTUBE_VIDEO)
+
+
+chain = prompt | model | parser
+
 
 print(chain.invoke({
     "context": "Julius Caesar is my Maths teacher",
