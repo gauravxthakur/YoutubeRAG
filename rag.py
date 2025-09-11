@@ -4,24 +4,25 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-#from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
-#from langchain_pinecone import PineconeVectorStore
+from langchain_pinecone import PineconeVectorStore
 
 import yt_dlp
 import whisper
-#import pinecone
+import pinecone
 
 # Load environment variables
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 YOUTUBE_VIDEO = "https://youtu.be/dViKieKCM7o?si=fOMHR2oxIqJA4lGV"
 
 # Setup the model
-model = ChatOpenAI(model="deepseek/deepseek-chat-v3.1:free", openai_api_key=OPENAI_API_KEY, base_url="https://openrouter.ai/api/v1")
+model = ChatOpenAI(model="deepseek/deepseek-chat-v3.1:free", api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/v1")
 
 # Define the parser
 parser = StrOutputParser()
@@ -97,7 +98,7 @@ transcription = get_video_transcription(YOUTUBE_VIDEO)
 
 
 # Split the transcription into chunks
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=2)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 documents = text_splitter.split_documents([Document(page_content=transcription)])
 
 
@@ -105,12 +106,16 @@ documents = text_splitter.split_documents([Document(page_content=transcription)]
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 
-chain = prompt | model | parser
+# Set up Pinecone (vector db)
+index_name = "youtube-rag-index"
+
+pinecone = PineconeVectorStore.from_documents(
+    documents, embeddings, index_name=index_name
+)
 
 
-#print(chain.invoke({
-    #"context": "Julius Caesar is my Maths teacher",
-    #"question": "Who is Julius Caesar?"
-#}))
+# The full RAG chain
+chain = ({"context": pinecone.as_retriever(), "question": RunnablePassthrough()} | prompt | model | parser)
 
-print(embeddings)
+
+print(chain.invoke("what are some of the words spoken in this video?...Also repeat my query at the end of your response, but in all caps!"))
