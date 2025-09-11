@@ -7,7 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 #from langchain_core.runnables import RunnablePassthrough
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-#from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 #from langchain_pinecone import PineconeVectorStore
 
 import yt_dlp
@@ -101,6 +101,10 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=2)
 documents = text_splitter.split_documents([Document(page_content=transcription)])
 
 
+# Generate embeddings
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+
 chain = prompt | model | parser
 
 
@@ -108,4 +112,5 @@ chain = prompt | model | parser
     #"context": "Julius Caesar is my Maths teacher",
     #"question": "Who is Julius Caesar?"
 #}))
-print(documents)
+
+print(embeddings)
